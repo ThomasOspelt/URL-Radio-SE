@@ -39,6 +39,7 @@ object Keys {
     const val EXTRA_START_LAST_PLAYED_STATION: String = "START_LAST_PLAYED_STATION"
     const val EXTRA_SLEEP_TIMER_REMAINING: String = "SLEEP_TIMER_REMAINING"
     const val EXTRA_METADATA_HISTORY: String = "METADATA_HISTORY"
+    const val EXTRA_COVER_URL: String = "COVER_URL"
 
     // keys
     const val KEY_STREAM_URI: String = "STREAM_URI"
@@ -70,6 +71,9 @@ object Keys {
     const val PREF_LARGE_BUFFER_SIZE: String = "LARGE_BUFFER_SIZE"
     const val PREF_EDIT_STATIONS: String = "EDIT_STATIONS"
     const val PREF_EDIT_STREAMS_URIS: String = "EDIT_STREAMS_URIS"
+    const val PREF_LISTENBRAINZ_TOKEN: String = "LISTENBRAINZ_TOKEN"
+    const val PREF_SCROBBLE_FORMAT: String = "SCROBBLE_FORMAT"
+    const val PREF_COVER_ART_ENABLED: String = "COVER_ART_ENABLED"
 
     // default const values
     const val DEFAULT_SIZE_OF_METADATA_HISTORY: Int = 25

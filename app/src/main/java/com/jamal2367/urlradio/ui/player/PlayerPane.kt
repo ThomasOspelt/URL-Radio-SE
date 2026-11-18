@@ -142,7 +142,7 @@ fun PlayerPane(
                     )
                     .padding(horizontal = 8.dp, vertical = 8.dp),
             ) {
-                StationArtwork(station = station, modifier = Modifier.size(56.dp))
+                StationArtwork(station = station, coverUrl = playback.coverUrl, modifier = Modifier.size(56.dp))
 
                 Column(
                     modifier = Modifier
@@ -468,16 +468,16 @@ private fun EqualizerIcon(color: Color, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun StationArtwork(station: Station, modifier: Modifier = Modifier) {
+private fun StationArtwork(station: Station, coverUrl: String, modifier: Modifier = Modifier) {
     // Same default station image the list uses for stations without their own artwork.
     val placeholder = painterResource(R.drawable.ic_default_station_image_72dp)
     val context = LocalContext.current
     // The player recomposes on every metadata and sleep-timer tick, so the request is built
     // once per station rather than once per pass.
-    val request = remember(station.smallImage, station.modificationDate) {
+    val request = remember(station.smallImage, station.modificationDate, coverUrl) {
         ImageRequest.Builder(context)
-            .data(station.smallImage.ifEmpty { null })
-            .memoryCacheKey("${station.smallImage}:${station.modificationDate.time}")
+            .data(coverUrl.ifEmpty { station.smallImage.ifEmpty { null } })
+            .memoryCacheKey(coverUrl.ifEmpty { "${station.smallImage}:${station.modificationDate.time}" })
             .build()
     }
     Box(

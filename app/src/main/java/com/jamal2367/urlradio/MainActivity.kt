@@ -201,6 +201,9 @@ class MainActivity : ComponentActivity() {
 
         var themeSelection by remember { mutableStateOf(PreferencesHelper.loadThemeSelection()) }
         var largeBuffer by remember { mutableStateOf(PreferencesHelper.loadLargeBufferSize()) }
+        var listenBrainzToken by remember { mutableStateOf(PreferencesHelper.loadListenBrainzToken()) }
+        var coverArtEnabled by remember { mutableStateOf(PreferencesHelper.loadCoverArtEnabled()) }
+        var scrobbleFormat by remember { mutableStateOf(PreferencesHelper.loadScrobbleFormat()) }
         var showFindDialog by remember { mutableStateOf(false) }
         // Selection of the playlist import dialog. Kept here rather than in the search view
         // model because the imported list does not come from a search.
@@ -303,12 +306,15 @@ class MainActivity : ComponentActivity() {
                     themeSelection = themeSelection,
                     themeLabel = AppThemeHelper.getCurrentTheme(this),
                     largeBuffer = largeBuffer,
+                    listenBrainzToken = listenBrainzToken,
+                    scrobbleFormat = scrobbleFormat,
+                    coverArtEnabled = coverArtEnabled,
                 ),
                 actions = AppActions(
                     onTogglePlayback = { playback.togglePlayPause(it) },
                     onToggleEditor = { stationsViewModel.toggleEditor(it.uuid) },
-                    onSaveStation = { station, name, uri ->
-                        stationsViewModel.saveStation(station.uuid, name, uri)
+                    onSaveStation = { station, name, uri, format ->
+                        stationsViewModel.saveStation(station.uuid, name, uri, format)
                         stationsViewModel.closeEditor()
                     },
                     onCancelEdit = { stationsViewModel.closeEditor() },
@@ -409,6 +415,18 @@ class MainActivity : ComponentActivity() {
                             if (!it) PreferencesHelper.saveEditStreamUrisEnabled(false)
                         },
                         onEditStreamUrisChanged = { PreferencesHelper.saveEditStreamUrisEnabled(it) },
+                        onListenBrainzTokenChanged = {
+                            listenBrainzToken = it.trim()
+                            PreferencesHelper.saveListenBrainzToken(it)
+                        },
+                        onCoverArtChanged = {
+                            coverArtEnabled = it
+                            PreferencesHelper.saveCoverArtEnabled(it)
+                        },
+                        onScrobbleFormatChanged = {
+                            scrobbleFormat = it.trim()
+                            PreferencesHelper.saveScrobbleFormat(it)
+                        },
                         onOpenUrl = { openUrl(it) },
                         onCopyVersion = { copyToClipboard(it) },
                     ),

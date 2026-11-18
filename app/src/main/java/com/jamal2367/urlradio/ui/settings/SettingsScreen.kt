@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -52,6 +53,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.jamal2367.urlradio.Keys
 import com.jamal2367.urlradio.R
+import com.jamal2367.urlradio.helpers.ListenBrainzHelper
 import com.jamal2367.urlradio.ui.dialogs.ConfirmDialog
 import com.jamal2367.urlradio.ui.dialogs.WideDialogModifier
 import com.jamal2367.urlradio.ui.dialogs.WideDialogProperties
@@ -68,6 +70,9 @@ data class SettingsCallbacks(
     val onLargeBufferChanged: (Boolean) -> Unit,
     val onEditStationsChanged: (Boolean) -> Unit,
     val onEditStreamUrisChanged: (Boolean) -> Unit,
+    val onListenBrainzTokenChanged: (String) -> Unit,
+    val onCoverArtChanged: (Boolean) -> Unit,
+    val onScrobbleFormatChanged: (String) -> Unit,
     val onOpenUrl: (String) -> Unit,
     val onCopyVersion: (String) -> Unit,
 )
@@ -78,6 +83,11 @@ fun SettingsScreen(
     themeSelection: String,
     themeLabel: String,
     largeBuffer: Boolean,
+    listenBrainzToken: String,
+    scrobbleFormat: String,
+    coverArtEnabled: Boolean,
+    liveTitle: String,
+    isPlaying: Boolean,
     editStations: Boolean,
     editStreamUris: Boolean,
     callbacks: SettingsCallbacks,
@@ -87,6 +97,8 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showExportFormatDialog by remember { mutableStateOf(false) }
     var showRemoveAllDialog by remember { mutableStateOf(false) }
+    var showListenBrainzDialog by remember { mutableStateOf(false) }
+    var showScrobbleFormatDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         contentPadding = contentPadding,
@@ -118,6 +130,43 @@ fun SettingsScreen(
                     summary = "${stringResource(R.string.pref_theme_selection_summary)} $themeLabel",
                     icon = R.drawable.ic_brush_24dp,
                     onClick = { showThemeDialog = true },
+                )
+            }
+        }
+
+        item { CategoryHeader(stringResource(R.string.pref_scrobbling_title)) }
+        item {
+            SettingsGroup {
+                SettingsRow(
+                    title = stringResource(R.string.pref_listenbrainz_title),
+                    summary = stringResource(
+                        if (listenBrainzToken.isEmpty()) R.string.pref_listenbrainz_summary_disabled
+                        else R.string.pref_listenbrainz_summary_enabled
+                    ),
+                    icon = R.drawable.ic_music_note_24dp,
+                    onClick = { showListenBrainzDialog = true },
+                )
+                SettingsRow(
+                    title = stringResource(R.string.pref_scrobble_format_title),
+                    summary = scrobbleFormat.ifEmpty { ListenBrainzHelper.DEFAULT_FORMAT },
+                    icon = R.drawable.ic_edit_24dp,
+                    onClick = { showScrobbleFormatDialog = true },
+                )
+            }
+        }
+
+        item { CategoryHeader(stringResource(R.string.pref_cover_art_category)) }
+        item {
+            SettingsGroup {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.pref_cover_art_title),
+                    summary = stringResource(
+                        if (coverArtEnabled) R.string.pref_cover_art_summary_enabled
+                        else R.string.pref_cover_art_summary_disabled
+                    ),
+                    icon = R.drawable.ic_image_24dp,
+                    checked = coverArtEnabled,
+                    onCheckedChange = callbacks.onCoverArtChanged,
                 )
             }
         }
@@ -239,6 +288,29 @@ fun SettingsScreen(
         )
     }
 
+    if (showListenBrainzDialog) {
+        ListenBrainzTokenDialog(
+            current = listenBrainzToken,
+            onSave = {
+                callbacks.onListenBrainzTokenChanged(it)
+                showListenBrainzDialog = false
+            },
+            onDismiss = { showListenBrainzDialog = false },
+        )
+    }
+
+    if (showScrobbleFormatDialog) {
+        ScrobbleFormatDialog(
+            current = scrobbleFormat,
+            liveTitle = if (isPlaying) liveTitle else "",
+            onSave = {
+                callbacks.onScrobbleFormatChanged(it)
+                showScrobbleFormatDialog = false
+            },
+            onDismiss = { showScrobbleFormatDialog = false },
+        )
+    }
+
     if (showExportFormatDialog) {
         ExportFormatDialog(
             onExportM3u = {
@@ -263,6 +335,123 @@ fun SettingsScreen(
             onConfirm = callbacks.onRemoveAllStations,
             onDismiss = { showRemoveAllDialog = false },
         )
+    }
+}
+
+/* Edits the ListenBrainz user token. Saving an empty value turns scrobbling off. */
+@Composable
+private fun ListenBrainzTokenDialog(
+    current: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var token by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.pref_listenbrainz_title)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.pref_listenbrainz_dialog_message))
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = { token = it },
+                    label = { Text(stringResource(R.string.pref_listenbrainz_token_label)) },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(token) }) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        },
+    )
+}
+
+/* Edits the global stream title format, with a preview against the title playing right now. */
+@Composable
+private fun ScrobbleFormatDialog(
+    current: String,
+    liveTitle: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var format by remember { mutableStateOf(current) }
+    val valid = format.isBlank() || ListenBrainzHelper.isValidFormat(format)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.pref_scrobble_format_title)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.pref_scrobble_format_dialog_message))
+                OutlinedTextField(
+                    value = format,
+                    onValueChange = { format = it },
+                    label = { Text(stringResource(R.string.dialog_edit_scrobble_format)) },
+                    placeholder = { Text(ListenBrainzHelper.DEFAULT_FORMAT) },
+                    isError = !valid,
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                )
+                ScrobblePreview(
+                    liveTitle = liveTitle,
+                    format = ListenBrainzHelper.effectiveFormat(format, ""),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(format) }, enabled = valid) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        },
+    )
+}
+
+/*
+ * Shows what would be scrobbled for the title the stream is sending right now. Empty
+ * liveTitle means nothing is playing, so the user is told to start the station.
+ */
+@Composable
+fun ScrobblePreview(liveTitle: String, format: String) {
+    val track = if (liveTitle.isEmpty()) null else ListenBrainzHelper.parseStreamTitle(liveTitle, format)
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        if (liveTitle.isEmpty()) {
+            Text(
+                text = stringResource(R.string.scrobble_preview_not_playing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                text = stringResource(R.string.scrobble_preview_stream_title, liveTitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = if (track != null) {
+                    stringResource(R.string.scrobble_preview_result, track.artist, track.title)
+                } else {
+                    stringResource(R.string.scrobble_preview_no_match)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (track != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 

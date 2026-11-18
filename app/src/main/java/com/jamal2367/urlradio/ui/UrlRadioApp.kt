@@ -112,12 +112,15 @@ data class AppState(
     val themeSelection: String,
     val themeLabel: String,
     val largeBuffer: Boolean,
+    val listenBrainzToken: String,
+    val scrobbleFormat: String,
+    val coverArtEnabled: Boolean,
 )
 
 data class AppActions(
     val onTogglePlayback: (Station) -> Unit,
     val onToggleEditor: (Station) -> Unit,
-    val onSaveStation: (Station, String, String) -> Unit,
+    val onSaveStation: (Station, String, String, String) -> Unit,
     val onCancelEdit: () -> Unit,
     val onChangeImage: (Station) -> Unit,
     val onPlaceOnHomeScreen: (Station) -> Unit,
@@ -213,6 +216,11 @@ fun UrlRadioApp(
                 themeSelection = state.themeSelection,
                 themeLabel = state.themeLabel,
                 largeBuffer = state.largeBuffer,
+                listenBrainzToken = state.listenBrainzToken,
+                scrobbleFormat = state.scrobbleFormat,
+                coverArtEnabled = state.coverArtEnabled,
+                liveTitle = state.playback.currentMetadata,
+                isPlaying = state.playback.isPlaying,
                 editStations = state.editStationsEnabled,
                 editStreamUris = state.editStreamUrisEnabled,
                 callbacks = actions.settings,
@@ -456,6 +464,9 @@ private fun StationsPane(
         }
     } else {
         StationListScreen(
+            liveTitle = if (state.playback.isPlaying) state.playback.currentMetadata else "",
+            coverUrl = state.playback.coverUrl,
+            globalScrobbleFormat = state.scrobbleFormat,
             stations = visibleStations,
             playingStationUuid = if (state.playback.isPlaying) state.playback.stationUuid else "",
             expandedStationUuid = state.expandedStationUuid,

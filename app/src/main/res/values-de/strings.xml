@@ -56,6 +56,24 @@
     <string name="player_sheet_h2_stream_url">Streaming-Adresse</string>
 
     <!-- Settings -->
+    <string name="pref_scrobbling_title">Scrobbling</string>
+    <string name="pref_listenbrainz_title">ListenBrainz</string>
+    <string name="pref_listenbrainz_summary_disabled">Nicht eingerichtet. Gib dein Benutzer-Token ein, um Titel zu scrobbeln.</string>
+    <string name="pref_listenbrainz_summary_enabled">Scrobbling ist aktiv. Titel werden aus dem Stream-Titel ermittelt.</string>
+    <string name="pref_listenbrainz_dialog_message">Gib dein ListenBrainz-Benutzer-Token ein (in den Profileinstellungen von ListenBrainz). Leer lassen, um Scrobbling zu deaktivieren.</string>
+    <string name="pref_listenbrainz_token_label">Benutzer-Token</string>
+    <string name="pref_scrobble_format_title">Format des Stream-Titels</string>
+    <string name="pref_scrobble_format_dialog_message">Legt fest, wie Titel aus dem Stream zerlegt werden. Nutze {artist} und {title}, sowie {any} für zu ignorierende Teile, z. B. "{title} by {artist}". Sender können dies im Editor überschreiben.</string>
+    <string name="dialog_edit_scrobble_format">Scrobble-Format (optional)</string>
+    <string name="scrobble_format_hint">Überschreibt das globale Format. Nutze {artist}, {title}, {any}.</string>
+    <string name="scrobble_preview_not_playing">Spiele diesen Sender ab, um die Vorschau der Titelerkennung zu sehen.</string>
+    <string name="scrobble_preview_stream_title">Stream: %1$s</string>
+    <string name="scrobble_preview_result">Wird gescrobbelt als: %1$s — %2$s</string>
+    <string name="scrobble_preview_no_match">Titel passt nicht zum Format und wird nicht gescrobbelt.</string>
+    <string name="pref_cover_art_category">Cover</string>
+    <string name="pref_cover_art_title">Titel-Cover anzeigen</string>
+    <string name="pref_cover_art_summary_enabled">Das Cover des laufenden Titels wird online gesucht (Deezer, MusicBrainz) und ersetzt während der Wiedergabe das Senderbild.</string>
+    <string name="pref_cover_art_summary_disabled">Es wird nur das Senderbild angezeigt.</string>
     <string name="pref_advanced_title">Erweitert</string>
     <string name="pref_app_version_summary">Version</string>
     <string name="pref_app_version_title">App-Version</string>

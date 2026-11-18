@@ -302,6 +302,48 @@ object PreferencesHelper {
     }
 
 
+    /* Loads the ListenBrainz user token - empty when scrobbling is off */
+    fun loadListenBrainzToken(): String {
+        return sharedPreferences.getString(Keys.PREF_LISTENBRAINZ_TOKEN, String()).orEmpty()
+    }
+
+
+    /* Loads the global stream title format used for scrobbling - empty means the default */
+    fun loadScrobbleFormat(): String {
+        return sharedPreferences.getString(Keys.PREF_SCROBBLE_FORMAT, String()).orEmpty()
+    }
+
+
+    /* Loads value of the option: look up cover art for the playing track */
+    fun loadCoverArtEnabled(): Boolean {
+        return sharedPreferences.getBoolean(Keys.PREF_COVER_ART_ENABLED, true)
+    }
+
+
+    /* Saves value of the option: look up cover art for the playing track */
+    fun saveCoverArtEnabled(enabled: Boolean) {
+        sharedPreferences.edit {
+            putBoolean(Keys.PREF_COVER_ART_ENABLED, enabled)
+        }
+    }
+
+
+    /* Saves the global stream title format used for scrobbling */
+    fun saveScrobbleFormat(format: String) {
+        sharedPreferences.edit {
+            putString(Keys.PREF_SCROBBLE_FORMAT, format.trim())
+        }
+    }
+
+
+    /* Saves the ListenBrainz user token */
+    fun saveListenBrainzToken(token: String) {
+        sharedPreferences.edit {
+            putString(Keys.PREF_LISTENBRAINZ_TOKEN, token.trim())
+        }
+    }
+
+
     /* Loads value of the option: Buffer Size */
     fun loadLargeBufferSize(): Boolean {
         return sharedPreferences.getBoolean(Keys.PREF_LARGE_BUFFER_SIZE, false)

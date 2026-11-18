@@ -28,6 +28,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -57,16 +58,20 @@ import com.jamal2367.urlradio.core.Station
 import com.jamal2367.urlradio.helpers.AudioHelper
 import com.jamal2367.urlradio.helpers.CollectionChanges
 import com.jamal2367.urlradio.helpers.CollectionHelper
+import com.jamal2367.urlradio.helpers.CoverArtHelper
 import com.jamal2367.urlradio.helpers.FileHelper
+import com.jamal2367.urlradio.helpers.ListenBrainzHelper
 import com.jamal2367.urlradio.helpers.PreferencesHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 /*
@@ -102,6 +107,12 @@ class PlayerService : MediaLibraryService() {
     private var playbackRestartCounter: Int = 0
     private var playLastStation: Boolean = false
     private var manuallyCancelledSleepTimer = false
+    private var scrobbleJob: Job? = null
+    private var coverJob: Job? = null
+    // Cover of the track that is playing now; shown in the notification instead of the station image
+    private var coverUrl: String = String()
+    private var coverBytes: ByteArray? = null
+    private val playerListeners = mutableSetOf<Player.Listener>()
 
 
     /* Overrides onCreate from Service */
@@ -174,6 +185,23 @@ class PlayerService : MediaLibraryService() {
         // MediaSession.Callback.onPlayerCommandRequest, which is deprecated: the replacement
         // for changing what a player command does is the player itself.
         player = object : ForwardingPlayer(exoPlayer) {
+            override fun addListener(listener: Player.Listener) {
+                playerListeners.add(listener)
+                super.addListener(listener)
+            }
+
+            override fun removeListener(listener: Player.Listener) {
+                playerListeners.remove(listener)
+                super.removeListener(listener)
+            }
+
+            override fun getMediaMetadata(): MediaMetadata {
+                val cover = coverBytes ?: return super.getMediaMetadata()
+                return super.getMediaMetadata().buildUpon()
+                    .setArtworkData(cover, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                    .build()
+            }
+
             override fun getAvailableCommands(): Player.Commands {
                 return super.getAvailableCommands().buildUpon().add(COMMAND_SEEK_TO_NEXT)
                     .add(COMMAND_SEEK_TO_PREVIOUS).build()
@@ -315,6 +343,66 @@ class PlayerService : MediaLibraryService() {
     }
 
 
+    /* Parses a stream title once and hands the track to scrobbling and cover art lookup */
+    private fun handleStreamTitle(streamTitle: String) {
+        scrobbleJob?.cancel()
+        coverJob?.cancel()
+        val stationFormat: String = player.currentMediaItem?.mediaId
+            ?.let { id -> collection.stations.firstOrNull { it.uuid == id }?.scrobbleFormat }
+            .orEmpty()
+        val format = ListenBrainzHelper.effectiveFormat(stationFormat, PreferencesHelper.loadScrobbleFormat())
+        val track = ListenBrainzHelper.parseStreamTitle(streamTitle, format)
+        if (track == null) {
+            setCover(String(), null)
+            return
+        }
+        scrobble(track)
+        fetchCover(track)
+    }
+
+
+    /* Scrobbles a track to ListenBrainz */
+    private fun scrobble(track: ListenBrainzHelper.Track) {
+        val token: String = PreferencesHelper.loadListenBrainzToken()
+        if (token.isEmpty()) return
+        scrobbleJob = serviceScope.launch(Dispatchers.IO) {
+            ListenBrainzHelper.submit(token, track, playingNow = true)
+            // a listen only counts once the track has been heard for a while
+            kotlinx.coroutines.delay(ListenBrainzHelper.MIN_LISTEN_TIME_MS)
+            if (player.isPlaying) {
+                ListenBrainzHelper.submit(token, track, playingNow = false)
+            }
+        }
+    }
+
+
+    /* Looks up the cover of a track; the station image stays until one is found */
+    private fun fetchCover(track: ListenBrainzHelper.Track) {
+        if (!PreferencesHelper.loadCoverArtEnabled()) {
+            setCover(String(), null)
+            return
+        }
+        coverJob = serviceScope.launch {
+            val (url, bytes) = withContext(Dispatchers.IO) {
+                val found = CoverArtHelper.findCoverUrl(track.artist, track.title)
+                Pair(found.orEmpty(), found?.let { CoverArtHelper.downloadImage(it) })
+            }
+            // without the bytes the notification could not show it, and the two would disagree
+            if (bytes == null) setCover(String(), null) else setCover(url, bytes)
+        }
+    }
+
+
+    /* Applies (or clears) the track cover in the notification and tells the UI */
+    private fun setCover(url: String, bytes: ByteArray?) {
+        if (url == coverUrl) return
+        coverUrl = url
+        coverBytes = bytes
+        playerListeners.toList().forEach { it.onMediaMetadataChanged(player.mediaMetadata) }
+        broadcastMetadataHistory()
+    }
+
+
     /* Updates metadata */
     private fun updateMetadata(metadata: String = String()) {
         /*
@@ -356,6 +444,7 @@ class PlayerService : MediaLibraryService() {
         if (!this::mediaLibrarySession.isInitialized) return
         val extras = Bundle().apply {
             putStringArrayList(Keys.EXTRA_METADATA_HISTORY, ArrayList(metadataHistory))
+            putString(Keys.EXTRA_COVER_URL, coverUrl)
         }
         mediaLibrarySession.broadcastCustomCommand(
             SessionCommand(Keys.CMD_METADATA_UPDATED, Bundle.EMPTY),
@@ -520,6 +609,7 @@ class PlayerService : MediaLibraryService() {
                         Keys.EXTRA_METADATA_HISTORY,
                         ArrayList(metadataHistory)
                     )
+                    resultBundle.putString(Keys.EXTRA_COVER_URL, coverUrl)
                     return Futures.immediateFuture(
                         SessionResult(
                             SessionResult.RESULT_SUCCESS,
@@ -606,6 +696,9 @@ class PlayerService : MediaLibraryService() {
                 cancelSleepTimer()
                 // reset metadata
                 updateMetadata()
+                scrobbleJob?.cancel()
+                coverJob?.cancel()
+                setCover(String(), null)
 
                 // playback is not active
                 // Not playing because playback is paused, ended, suppressed, or the player
@@ -662,7 +755,9 @@ class PlayerService : MediaLibraryService() {
 
         override fun onMetadata(metadata: Metadata) {
             super.onMetadata(metadata)
-            updateMetadata(AudioHelper.getMetadataString(metadata))
+            val title: String = AudioHelper.getMetadataString(metadata)
+            updateMetadata(title)
+            handleStreamTitle(title)
         }
 
     }

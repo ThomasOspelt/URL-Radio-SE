@@ -120,8 +120,9 @@ class PlaybackConnection(
         ): ListenableFuture<SessionResult> {
             if (command.customAction == Keys.CMD_METADATA_UPDATED) {
                 val history = args.getStringArrayList(Keys.EXTRA_METADATA_HISTORY).orEmpty()
+                val cover = args.getString(Keys.EXTRA_COVER_URL).orEmpty()
                 if (history.isNotEmpty()) {
-                    _state.update { it.copy(metadataHistory = history.toList()) }
+                    _state.update { it.copy(metadataHistory = history.toList(), coverUrl = cover) }
                 }
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -210,11 +211,11 @@ class PlaybackConnection(
             Bundle.EMPTY,
         )
         future.addListener({
-            val history = runCatching {
-                future.get().extras.getStringArrayList(Keys.EXTRA_METADATA_HISTORY)
-            }.getOrNull().orEmpty()
+            val extras = runCatching { future.get().extras }.getOrNull()
+            val history = extras?.getStringArrayList(Keys.EXTRA_METADATA_HISTORY).orEmpty()
+            val cover = extras?.getString(Keys.EXTRA_COVER_URL).orEmpty()
             if (history.isNotEmpty()) {
-                _state.update { it.copy(metadataHistory = history.toList()) }
+                _state.update { it.copy(metadataHistory = history.toList(), coverUrl = cover) }
             }
         }, MoreExecutors.directExecutor())
     }

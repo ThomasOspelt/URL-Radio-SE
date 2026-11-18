@@ -180,7 +180,7 @@ class StationsViewModel(application: Application) : AndroidViewModel(application
         modificationDate = CollectionHelper.saveCollection(getApplication(), sorted)
     }
 
-    fun saveStation(stationUuid: String, name: String, streamUri: String) {
+    fun saveStation(stationUuid: String, name: String, streamUri: String, scrobbleFormat: String) {
         val updated = _collection.value.deepCopy()
         val station = updated.stations.firstOrNull { it.uuid == stationUuid } ?: return
         if (name.isNotEmpty()) {
@@ -190,6 +190,7 @@ class StationsViewModel(application: Application) : AndroidViewModel(application
         if (streamUri.isNotEmpty() && station.streamUris.isNotEmpty()) {
             station.streamUris[station.stream] = streamUri
         }
+        station.scrobbleFormat = scrobbleFormat.trim()
         val sorted = CollectionHelper.sortCollection(updated)
         _collection.value = sorted
         modificationDate = CollectionHelper.saveCollection(getApplication(), sorted)

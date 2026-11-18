@@ -48,7 +48,8 @@ data class Station(
     @Expose var radioBrowserStationUuid: String = String(),
     @Expose var radioBrowserChangeUuid: String = String(),
     @Expose var bitrate: Int = 0,
-    @Expose var codec: String = String()
+    @Expose var codec: String = String(),
+    @Expose var scrobbleFormat: String = String()
 ) : Parcelable {
 
 
@@ -101,7 +102,8 @@ data class Station(
             radioBrowserStationUuid = radioBrowserStationUuid,
             radioBrowserChangeUuid = radioBrowserChangeUuid,
             bitrate = bitrate,
-            codec = codec
+            codec = codec,
+            scrobbleFormat = scrobbleFormat
         )
     }
 }

@@ -60,6 +60,24 @@
     <string name="player_sheet_h2_stream_url">Streaming link</string>
 
     <!-- Settings -->
+    <string name="pref_scrobbling_title">Scrobbling</string>
+    <string name="pref_listenbrainz_title">ListenBrainz</string>
+    <string name="pref_listenbrainz_summary_disabled">Not configured. Set your user token to scrobble tracks.</string>
+    <string name="pref_listenbrainz_summary_enabled">Scrobbling is active. Tracks are parsed from the stream title.</string>
+    <string name="pref_listenbrainz_dialog_message">Enter your ListenBrainz user token (found in your ListenBrainz profile settings). Leave empty to disable scrobbling.</string>
+    <string name="pref_listenbrainz_token_label">User token</string>
+    <string name="pref_scrobble_format_title">Stream title format</string>
+    <string name="pref_scrobble_format_dialog_message">How track titles from the stream are split. Use {artist} and {title}, and {any} for parts to ignore, e.g. "{title} by {artist}". Stations can override this in their editor.</string>
+    <string name="dialog_edit_scrobble_format">Scrobble format (optional)</string>
+    <string name="scrobble_format_hint">Overrides the global format. Use {artist}, {title}, {any}.</string>
+    <string name="scrobble_preview_not_playing">Play this station to preview how its titles are parsed.</string>
+    <string name="scrobble_preview_stream_title">Stream: %1$s</string>
+    <string name="scrobble_preview_result">Scrobbles as: %1$s — %2$s</string>
+    <string name="scrobble_preview_no_match">Title does not match the format; it will not be scrobbled.</string>
+    <string name="pref_cover_art_category">Cover art</string>
+    <string name="pref_cover_art_title">Show track cover</string>
+    <string name="pref_cover_art_summary_enabled">The cover of the playing track is looked up online (Deezer, MusicBrainz) and replaces the station image while it plays.</string>
+    <string name="pref_cover_art_summary_disabled">Only the station image is shown.</string>
     <string name="pref_advanced_title">Advanced</string>
     <string name="pref_app_version_summary">Version</string>
     <string name="pref_app_version_title">App Version</string>

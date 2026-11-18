@@ -67,6 +67,8 @@ import com.jamal2367.urlradio.helpers.NetworkHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import com.jamal2367.urlradio.helpers.ListenBrainzHelper
+import com.jamal2367.urlradio.ui.settings.ScrobblePreview
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -77,12 +79,15 @@ private val CardShape = RoundedCornerShape(24.dp)
 fun StationCard(
     station: Station,
     isPlaying: Boolean,
+    coverUrl: String,
     isEditorOpen: Boolean,
     editStationsEnabled: Boolean,
     editStreamUrisEnabled: Boolean,
     onTogglePlayback: () -> Unit,
     onToggleEditor: () -> Unit,
-    onSave: (name: String, streamUri: String) -> Unit,
+    liveTitle: String,
+    globalScrobbleFormat: String,
+    onSave: (name: String, streamUri: String, scrobbleFormat: String) -> Unit,
     onCancelEdit: () -> Unit,
     onChangeImage: () -> Unit,
     onPlaceOnHomeScreen: () -> Unit,
@@ -119,6 +124,7 @@ fun StationCard(
             ) {
                 StationCover(
                     station = station,
+                    coverUrl = if (isPlaying) coverUrl else "",
                     // The cover becomes the shortcut to the image picker while the editor is
                     // open (see the clickable below it) -- this is what shows that, rather
                     // than leaving it looking like a plain, inert cover.
@@ -203,6 +209,8 @@ fun StationCard(
                     StationEditor(
                         station = station,
                         editStreamUrisEnabled = editStreamUrisEnabled,
+                        liveTitle = if (isPlaying) liveTitle else "",
+                        globalScrobbleFormat = globalScrobbleFormat,
                         onSave = onSave,
                         onCancel = onCancelEdit,
                         onPlaceOnHomeScreen = onPlaceOnHomeScreen,
@@ -234,6 +242,7 @@ fun StationCard(
 @Composable
 private fun StationCover(
     station: Station,
+    coverUrl: String,
     showChangeImageHint: Boolean = false,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
 ) {
@@ -246,11 +255,12 @@ private fun StationCover(
     // collection changes, and assembling a request per row per pass is work the scroll can
     // feel. The file keeps its name when a station image is replaced, so the modification
     // date is folded into the cache key -- otherwise Coil would serve the old bitmap.
-    val request = remember(station.smallImage, station.modificationDate) {
+    val request = remember(station.smallImage, station.modificationDate, coverUrl) {
+        val key = coverUrl.ifEmpty { "${station.smallImage}:${station.modificationDate.time}" }
         ImageRequest.Builder(context)
-            .data(station.smallImage.ifEmpty { null })
-            .memoryCacheKey("${station.smallImage}:${station.modificationDate.time}")
-            .diskCacheKey("${station.smallImage}:${station.modificationDate.time}")
+            .data(coverUrl.ifEmpty { station.smallImage.ifEmpty { null } })
+            .memoryCacheKey(key)
+            .diskCacheKey(key)
             .build()
     }
     Box(
@@ -296,13 +306,16 @@ private fun StationCover(
 private fun StationEditor(
     station: Station,
     editStreamUrisEnabled: Boolean,
-    onSave: (name: String, streamUri: String) -> Unit,
+    liveTitle: String,
+    globalScrobbleFormat: String,
+    onSave: (name: String, streamUri: String, scrobbleFormat: String) -> Unit,
     onCancel: () -> Unit,
     onPlaceOnHomeScreen: () -> Unit,
 ) {
     var name by rememberSaveable(station.uuid) { mutableStateOf(station.name) }
     var streamUri by rememberSaveable(station.uuid) { mutableStateOf(station.getStreamUri()) }
     var streamUriAccepted by remember(station.uuid) { mutableStateOf(true) }
+    var scrobbleFormat by rememberSaveable(station.uuid) { mutableStateOf(station.scrobbleFormat) }
 
     // Mirrors the old handleStationUriInput: the save button stays disabled until the
     // edited address has been confirmed to serve a supported stream type.
@@ -345,6 +358,23 @@ private fun StationEditor(
             )
         }
 
+        OutlinedTextField(
+            value = scrobbleFormat,
+            onValueChange = { scrobbleFormat = it },
+            label = { Text(stringResource(R.string.dialog_edit_scrobble_format)) },
+            placeholder = { Text(globalScrobbleFormat.ifEmpty { ListenBrainzHelper.DEFAULT_FORMAT }) },
+            supportingText = { Text(stringResource(R.string.scrobble_format_hint)) },
+            isError = scrobbleFormat.isNotBlank() && !ListenBrainzHelper.isValidFormat(scrobbleFormat),
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+        )
+        ScrobblePreview(
+            liveTitle = liveTitle,
+            format = ListenBrainzHelper.effectiveFormat(scrobbleFormat, globalScrobbleFormat),
+        )
+
         Row(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
@@ -366,8 +396,9 @@ private fun StationEditor(
                 )
             }
             IconButton(
-                onClick = { onSave(name, streamUri) },
-                enabled = streamUriAccepted,
+                onClick = { onSave(name, streamUri, scrobbleFormat) },
+                // an invalid format would silently disable scrobbling for this station
+                enabled = streamUriAccepted && (scrobbleFormat.isBlank() || ListenBrainzHelper.isValidFormat(scrobbleFormat)),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_check_24dp),

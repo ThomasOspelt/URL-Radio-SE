@@ -28,6 +28,8 @@ data class PlaybackUiState(
     val isBuffering: Boolean = false,
     /** Newest last. Empty until the service has reported any metadata. */
     val metadataHistory: List<String> = emptyList(),
+    /** Cover of the playing track, or empty to show the station image. */
+    val coverUrl: String = "",
     /** Milliseconds left on the sleep timer, 0 when no timer is running. */
     val sleepTimerRemaining: Long = 0L,
     /** Set when playback failed; cleared once the UI has shown it. */
